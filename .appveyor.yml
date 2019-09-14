@@ -2,16 +2,6 @@ environment:
   CYG_MIRROR: http://cygwin.mirror.constant.com
   CYG_PACKAGES: make,gcc-core,libiconv-devel
   matrix:
-    - CYG_ROOT: C:\cygwin64
-      CYG_CACHE: C:\cygwin64\var\cache\setup
-      CYG_SETUP: setup-x86_64.exe
-      BASH: C:\cygwin64\bin\bash
-      CC: gcc
-    - CYG_ROOT: C:\cygwin
-      CYG_CACHE: C:\cygwin\var\cache\setup
-      CYG_SETUP: setup-x86.exe
-      BASH: C:\cygwin\bin\bash
-      CC: gcc
     - MSYSTEM: MINGW64
       MSYS_CACHE: C:\msys64\var\cache\pacman\pkg
       BASH: C:\msys64\usr\bin\bash
@@ -56,6 +46,17 @@ test_script:
       }
 
       & $env:BASH -lc "cd '$env:APPVEYOR_BUILD_FOLDER' && ./hashcat.exe -m 0 --show *ple0.hash"
+
+for:
+  -
+    matrix:
+      only:
+        - MSYSTEM: MINGW64
+    after_build:
+      - 7z a all.zip ${APPVEYOR_BUILD_FOLDER}
+    artifacts:
+      - path: all.zip
+        name: all
 
 only_commits:
   files:
