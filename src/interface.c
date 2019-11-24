@@ -132,7 +132,7 @@ int hashconfig_init (hashcat_ctx_t *hashcat_ctx)
   // check for missing pointer assignements
 
   #define CHECK_DEFINED(func)                                                     \
-    if ((func) == NULL)                                                             \
+    if ((func) == NULL)                                                           \
     {                                                                             \
       event_log_error (hashcat_ctx, "Missing symbol definitions. Old template?"); \
                                                                                   \
@@ -211,7 +211,7 @@ int hashconfig_init (hashcat_ctx_t *hashcat_ctx)
   // mandatory functions check
 
   #define CHECK_MANDATORY(func)                                               \
-    if ((func) == MODULE_DEFAULT)                                               \
+    if ((func) == MODULE_DEFAULT)                                             \
     {                                                                         \
       event_log_error (hashcat_ctx, "Missing mandatory symbol definitions");  \
                                                                               \
@@ -290,6 +290,16 @@ int hashconfig_init (hashcat_ctx_t *hashcat_ctx)
 
       return -1;
     }
+  }
+
+  if (user_options->hex_charset)
+  {
+    hashconfig->opts_type |= OPTS_TYPE_PT_HEX;
+  }
+
+  if (user_options->hex_wordlist)
+  {
+    hashconfig->opts_type |= OPTS_TYPE_PT_HEX;
   }
 
   if (user_options->hex_salt)
