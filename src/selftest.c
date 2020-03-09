@@ -201,7 +201,7 @@ static int selftest (hashcat_ctx_t *hashcat_ctx, hc_device_param_t *device_param
       {
         device_param->kernel_params_buf32[30] = 1;
 
-        if (hashconfig->opts_type & OPTS_TYPE_PT_BITSLICE)
+        if (hashconfig->opts_type & OPTS_TYPE_TM_KERNEL)
         {
           pw_t pw;
 
@@ -486,6 +486,11 @@ static int selftest (hashcat_ctx_t *hashcat_ctx, hc_device_param_t *device_param
       device_param->kernel_params_buf32[29] = loop_left;
 
       if (run_kernel (hashcat_ctx, device_param, KERN_RUN_2, 1, false, 0) == -1) return -1;
+
+      if (hashconfig->opts_type & OPTS_TYPE_LOOP_EXTENDED)
+      {
+        if (run_kernel (hashcat_ctx, device_param, KERN_RUN_2E, 1, false, 0) == -1) return -1;
+      }
     }
 
     if (hashconfig->opts_type & OPTS_TYPE_HOOK23)
@@ -546,30 +551,31 @@ static int selftest (hashcat_ctx_t *hashcat_ctx, hc_device_param_t *device_param
       {
         if (run_kernel (hashcat_ctx, device_param, KERN_RUN_AUX1, 1, false, 0) == -1) return -1;
       }
-      else if (hashconfig->opts_type & OPTS_TYPE_AUX2)
+
+      if (hashconfig->opts_type & OPTS_TYPE_AUX2)
       {
         if (run_kernel (hashcat_ctx, device_param, KERN_RUN_AUX2, 1, false, 0) == -1) return -1;
       }
-      else if (hashconfig->opts_type & OPTS_TYPE_AUX3)
+
+      if (hashconfig->opts_type & OPTS_TYPE_AUX3)
       {
         if (run_kernel (hashcat_ctx, device_param, KERN_RUN_AUX3, 1, false, 0) == -1) return -1;
       }
-      else
+
+      if (hashconfig->opts_type & OPTS_TYPE_AUX4)
       {
-        if (run_kernel (hashcat_ctx, device_param, KERN_RUN_3, 1, false, 0) == -1) return -1;
+        if (run_kernel (hashcat_ctx, device_param, KERN_RUN_AUX4, 1, false, 0) == -1) return -1;
       }
     }
-    else
-    {
-      if (run_kernel (hashcat_ctx, device_param, KERN_RUN_3, 1, false, 0) == -1) return -1;
-    }
+
+    if (run_kernel (hashcat_ctx, device_param, KERN_RUN_3, 1, false, 0) == -1) return -1;
   }
 
   device_param->spin_damp = spin_damp_sav;
 
   // check : check if cracked
 
-  u32 num_cracked;
+  u32 num_cracked = 0;
 
   if (device_param->is_cuda == true)
   {
@@ -677,6 +683,7 @@ static int selftest (hashcat_ctx_t *hashcat_ctx, hc_device_param_t *device_param
   if (num_cracked == 0)
   {
     hc_thread_mutex_lock (status_ctx->mux_display);
+
     if (device_param->is_opencl == true)
     {
       event_log_error (hashcat_ctx, "* Device #%u: ATTENTION! OpenCL kernel self-test failed.", device_param->device_id + 1);

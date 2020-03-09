@@ -257,6 +257,7 @@ typedef enum kern_run
   KERN_RUN_1      = 1000,
   KERN_RUN_12     = 1500,
   KERN_RUN_2      = 2000,
+  KERN_RUN_2E     = 2001,
   KERN_RUN_23     = 2500,
   KERN_RUN_3      = 3000,
   KERN_RUN_4      = 4000,
@@ -372,7 +373,8 @@ typedef enum opti_type
   OPTI_TYPE_USES_BITS_8         = (1 << 16),
   OPTI_TYPE_USES_BITS_16        = (1 << 17),
   OPTI_TYPE_USES_BITS_32        = (1 << 18),
-  OPTI_TYPE_USES_BITS_64        = (1 << 19)
+  OPTI_TYPE_USES_BITS_64        = (1 << 19),
+  OPTI_TYPE_REGISTER_LIMIT      = (1 << 20), // We'll limit the register count to 128
 
 } opti_type_t;
 
@@ -390,25 +392,25 @@ typedef enum opts_type
   OPTS_TYPE_PT_GENERATE_LE    = (1ULL <<  9),
   OPTS_TYPE_PT_GENERATE_BE    = (1ULL << 10),
   OPTS_TYPE_PT_NEVERCRACK     = (1ULL << 11), // if we want all possible results
-  OPTS_TYPE_PT_BITSLICE       = (1ULL << 12),
-  OPTS_TYPE_PT_ALWAYS_ASCII   = (1ULL << 13),
-  OPTS_TYPE_PT_ALWAYS_HEXIFY  = (1ULL << 14),
-  OPTS_TYPE_PT_LM             = (1ULL << 15), // special handling: all lower, 7 max, ...
-  OPTS_TYPE_PT_HEX            = (1ULL << 16), // input wordlist (and masks!) are always in hex
-  OPTS_TYPE_ST_UTF16LE        = (1ULL << 17),
-  OPTS_TYPE_ST_UTF16BE        = (1ULL << 18),
-  OPTS_TYPE_ST_UPPER          = (1ULL << 19),
-  OPTS_TYPE_ST_LOWER          = (1ULL << 20),
-  OPTS_TYPE_ST_ADD01          = (1ULL << 21),
-  OPTS_TYPE_ST_ADD02          = (1ULL << 22),
-  OPTS_TYPE_ST_ADD80          = (1ULL << 23),
-  OPTS_TYPE_ST_ADDBITS14      = (1ULL << 24),
-  OPTS_TYPE_ST_ADDBITS15      = (1ULL << 25),
-  OPTS_TYPE_ST_HEX            = (1ULL << 26),
-  OPTS_TYPE_ST_BASE64         = (1ULL << 27),
-  OPTS_TYPE_ST_HASH_MD5       = (1ULL << 28),
-  OPTS_TYPE_HASH_COPY         = (1ULL << 29),
-  OPTS_TYPE_HASH_SPLIT        = (1ULL << 30),
+  OPTS_TYPE_PT_ALWAYS_ASCII   = (1ULL << 12),
+  OPTS_TYPE_PT_ALWAYS_HEXIFY  = (1ULL << 13),
+  OPTS_TYPE_PT_LM             = (1ULL << 14), // special handling: all lower, 7 max, ...
+  OPTS_TYPE_PT_HEX            = (1ULL << 15), // input wordlist (and masks!) are always in hex
+  OPTS_TYPE_ST_UTF16LE        = (1ULL << 16),
+  OPTS_TYPE_ST_UTF16BE        = (1ULL << 17),
+  OPTS_TYPE_ST_UPPER          = (1ULL << 18),
+  OPTS_TYPE_ST_LOWER          = (1ULL << 19),
+  OPTS_TYPE_ST_ADD01          = (1ULL << 20),
+  OPTS_TYPE_ST_ADD02          = (1ULL << 21),
+  OPTS_TYPE_ST_ADD80          = (1ULL << 22),
+  OPTS_TYPE_ST_ADDBITS14      = (1ULL << 23),
+  OPTS_TYPE_ST_ADDBITS15      = (1ULL << 24),
+  OPTS_TYPE_ST_HEX            = (1ULL << 25),
+  OPTS_TYPE_ST_BASE64         = (1ULL << 26),
+  OPTS_TYPE_HASH_COPY         = (1ULL << 28),
+  OPTS_TYPE_HASH_SPLIT        = (1ULL << 29),
+  OPTS_TYPE_LOOP_EXTENDED     = (1ULL << 30), // a kernel which is called each time normal _loop kernel finished.
+                                              // but unlike a hook kernel this kernel is called for every _loop iteration offset
   OPTS_TYPE_HOOK12            = (1ULL << 31),
   OPTS_TYPE_HOOK23            = (1ULL << 32),
   OPTS_TYPE_INIT2             = (1ULL << 33),
@@ -418,20 +420,21 @@ typedef enum opts_type
   OPTS_TYPE_AUX3              = (1ULL << 37),
   OPTS_TYPE_AUX4              = (1ULL << 38),
   OPTS_TYPE_BINARY_HASHFILE   = (1ULL << 39),
-  OPTS_TYPE_PREFERED_THREAD   = (1ULL << 40), // some algorithms (complicated ones with many branches) benefit from this
   OPTS_TYPE_PT_ADD06          = (1ULL << 41),
   OPTS_TYPE_KEYBOARD_MAPPING  = (1ULL << 42),
   OPTS_TYPE_DEEP_COMP_KERNEL  = (1ULL << 43), // if we have to iterate through each hash inside the comp kernel, for example if each hash has to be decrypted separately
-  OPTS_TYPE_SUGGEST_KG        = (1ULL << 44), // suggest keep guessing for modules the user maybe wants to use --keep-guessing
-  OPTS_TYPE_COPY_TMPS         = (1ULL << 45), // if we want to use data from tmps buffer (for example get the PMK in WPA)
-  OPTS_TYPE_POTFILE_NOPASS    = (1ULL << 46), // sometimes the password should not be printed to potfile
+  OPTS_TYPE_TM_KERNEL         = (1ULL << 44),
+  OPTS_TYPE_SUGGEST_KG        = (1ULL << 45), // suggest keep guessing for modules the user maybe wants to use --keep-guessing
+  OPTS_TYPE_COPY_TMPS         = (1ULL << 46), // if we want to use data from tmps buffer (for example get the PMK in WPA)
+  OPTS_TYPE_POTFILE_NOPASS    = (1ULL << 47), // sometimes the password should not be printed to potfile
+  OPTS_TYPE_DYNAMIC_SHARED    = (1ULL << 48), // use dynamic shared memory (note: needs special kernel changes)
 
 } opts_type_t;
 
 typedef enum dgst_size
 {
   DGST_SIZE_4_2  = (2  * sizeof (u32)), // 8
-  DGST_SIZE_4_4  = (4  * sizeof (u32)), // 16
+  DGST_SIZE_4_4  = (4  * sizeof (u32)), // 16 !!!
   DGST_SIZE_4_5  = (5  * sizeof (u32)), // 20
   DGST_SIZE_4_6  = (6  * sizeof (u32)), // 24
   DGST_SIZE_4_7  = (7  * sizeof (u32)), // 28
@@ -439,6 +442,7 @@ typedef enum dgst_size
   DGST_SIZE_4_16 = (16 * sizeof (u32)), // 64 !!!
   DGST_SIZE_4_32 = (32 * sizeof (u32)), // 128 !!!
   DGST_SIZE_4_64 = (64 * sizeof (u32)), // 256
+  DGST_SIZE_8_2  = (2  * sizeof (u64)), // 16 !!!
   DGST_SIZE_8_8  = (8  * sizeof (u64)), // 64 !!!
   DGST_SIZE_8_16 = (16 * sizeof (u64)), // 128 !!!
   DGST_SIZE_8_25 = (25 * sizeof (u64))  // 200
@@ -484,7 +488,9 @@ typedef enum outfile_fmt
   OUTFILE_FMT_HASH      = (1 << 0),
   OUTFILE_FMT_PLAIN     = (1 << 1),
   OUTFILE_FMT_HEXPLAIN  = (1 << 2),
-  OUTFILE_FMT_CRACKPOS  = (1 << 3)
+  OUTFILE_FMT_CRACKPOS  = (1 << 3),
+  OUTFILE_FMT_TIME_ABS  = (1 << 4),
+  OUTFILE_FMT_TIME_REL  = (1 << 5)
 
 } outfile_fmt_t;
 
@@ -603,6 +609,8 @@ typedef enum user_options_defaults
   MARKOV_DISABLE           = false,
   MARKOV_THRESHOLD         = 0,
   NONCE_ERROR_CORRECTIONS  = 8,
+  BACKEND_IGNORE_CUDA      = false,
+  BACKEND_IGNORE_OPENCL    = false,
   BACKEND_INFO             = false,
   BACKEND_VECTOR_WIDTH     = 0,
   OPTIMIZED_KERNEL_ENABLE  = false,
@@ -639,6 +647,8 @@ typedef enum user_options_defaults
   USAGE                    = false,
   USERNAME                 = false,
   VERSION                  = false,
+  VERACRYPT_PIM_START      = 485,
+  VERACRYPT_PIM_STOP       = 485,
   WORDLIST_AUTOHEX_DISABLE = false,
   WORKLOAD_PROFILE         = 2,
 
@@ -649,125 +659,129 @@ typedef enum user_options_map
   IDX_ADVICE_DISABLE            = 0xff00,
   IDX_ATTACK_MODE               = 'a',
   IDX_BACKEND_DEVICES           = 'd',
+  IDX_BACKEND_IGNORE_CUDA       = 0xff01,
+  IDX_BACKEND_IGNORE_OPENCL     = 0xff02,
   IDX_BACKEND_INFO              = 'I',
-  IDX_BACKEND_VECTOR_WIDTH      = 0xff01,
-  IDX_BENCHMARK_ALL             = 0xff02,
+  IDX_BACKEND_VECTOR_WIDTH      = 0xff03,
+  IDX_BENCHMARK_ALL             = 0xff04,
   IDX_BENCHMARK                 = 'b',
-  IDX_BITMAP_MAX                = 0xff03,
-  IDX_BITMAP_MIN                = 0xff04,
+  IDX_BITMAP_MAX                = 0xff05,
+  IDX_BITMAP_MIN                = 0xff06,
   #ifdef WITH_BRAIN
   IDX_BRAIN_CLIENT              = 'z',
-  IDX_BRAIN_CLIENT_FEATURES     = 0xff05,
-  IDX_BRAIN_HOST                = 0xff06,
-  IDX_BRAIN_PASSWORD            = 0xff07,
-  IDX_BRAIN_PORT                = 0xff08,
-  IDX_BRAIN_SERVER              = 0xff09,
-  IDX_BRAIN_SESSION             = 0xff0a,
-  IDX_BRAIN_SESSION_WHITELIST   = 0xff0b,
+  IDX_BRAIN_CLIENT_FEATURES     = 0xff07,
+  IDX_BRAIN_HOST                = 0xff08,
+  IDX_BRAIN_PASSWORD            = 0xff09,
+  IDX_BRAIN_PORT                = 0xff0a,
+  IDX_BRAIN_SERVER              = 0xff0b,
+  IDX_BRAIN_SERVER_TIMER        = 0xff0c,
+  IDX_BRAIN_SESSION             = 0xff0d,
+  IDX_BRAIN_SESSION_WHITELIST   = 0xff0e,
   #endif
-  IDX_CPU_AFFINITY              = 0xff0c,
+  IDX_CPU_AFFINITY              = 0xff0f,
   IDX_CUSTOM_CHARSET_1          = '1',
   IDX_CUSTOM_CHARSET_2          = '2',
   IDX_CUSTOM_CHARSET_3          = '3',
   IDX_CUSTOM_CHARSET_4          = '4',
-  IDX_DEBUG_FILE                = 0xff0d,
-  IDX_DEBUG_MODE                = 0xff0e,
-  IDX_ENCODING_FROM             = 0xff0f,
-  IDX_ENCODING_TO               = 0xff10,
-  IDX_EXAMPLE_HASHES            = 0xff11,
-  IDX_FORCE                     = 0xff12,
-  IDX_HWMON_DISABLE             = 0xff13,
-  IDX_HWMON_TEMP_ABORT          = 0xff14,
+  IDX_DEBUG_FILE                = 0xff10,
+  IDX_DEBUG_MODE                = 0xff11,
+  IDX_ENCODING_FROM             = 0xff12,
+  IDX_ENCODING_TO               = 0xff13,
+  IDX_EXAMPLE_HASHES            = 0xff14,
+  IDX_FORCE                     = 0xff15,
+  IDX_HWMON_DISABLE             = 0xff16,
+  IDX_HWMON_TEMP_ABORT          = 0xff17,
   IDX_HASH_MODE                 = 'm',
-  IDX_HCCAPX_MESSAGE_PAIR       = 0xff15,
+  IDX_HCCAPX_MESSAGE_PAIR       = 0xff18,
   IDX_HELP                      = 'h',
-  IDX_HEX_CHARSET               = 0xff16,
-  IDX_HEX_SALT                  = 0xff17,
-  IDX_HEX_WORDLIST              = 0xff18,
-  IDX_HOOK_THREADS              = 0xff19,
+  IDX_HEX_CHARSET               = 0xff19,
+  IDX_HEX_SALT                  = 0xff1a,
+  IDX_HEX_WORDLIST              = 0xff1b,
+  IDX_HOOK_THREADS              = 0xff1c,
   IDX_INCREMENT                 = 'i',
-  IDX_INCREMENT_MAX             = 0xff1a,
-  IDX_INCREMENT_MIN             = 0xff1b,
-  IDX_INDUCTION_DIR             = 0xff1c,
-  IDX_KEEP_GUESSING             = 0xff1d,
+  IDX_INCREMENT_MAX             = 0xff1d,
+  IDX_INCREMENT_MIN             = 0xff1e,
+  IDX_INDUCTION_DIR             = 0xff1f,
+  IDX_KEEP_GUESSING             = 0xff20,
   IDX_KERNEL_ACCEL              = 'n',
   IDX_KERNEL_LOOPS              = 'u',
   IDX_KERNEL_THREADS            = 'T',
-  IDX_KEYBOARD_LAYOUT_MAPPING   = 0xff1e,
-  IDX_KEYSPACE                  = 0xff1f,
-  IDX_LEFT                      = 0xff20,
+  IDX_KEYBOARD_LAYOUT_MAPPING   = 0xff21,
+  IDX_KEYSPACE                  = 0xff22,
+  IDX_LEFT                      = 0xff23,
   IDX_LIMIT                     = 'l',
-  IDX_LOGFILE_DISABLE           = 0xff21,
-  IDX_LOOPBACK                  = 0xff22,
-  IDX_MACHINE_READABLE          = 0xff23,
-  IDX_MARKOV_CLASSIC            = 0xff24,
-  IDX_MARKOV_DISABLE            = 0xff25,
-  IDX_MARKOV_HCSTAT2            = 0xff26,
+  IDX_LOGFILE_DISABLE           = 0xff24,
+  IDX_LOOPBACK                  = 0xff25,
+  IDX_MACHINE_READABLE          = 0xff26,
+  IDX_MARKOV_CLASSIC            = 0xff27,
+  IDX_MARKOV_DISABLE            = 0xff28,
+  IDX_MARKOV_HCSTAT2            = 0xff29,
   IDX_MARKOV_THRESHOLD          = 't',
-  IDX_NONCE_ERROR_CORRECTIONS   = 0xff27,
+  IDX_NONCE_ERROR_CORRECTIONS   = 0xff2a,
   IDX_OPENCL_DEVICE_TYPES       = 'D',
   IDX_OPTIMIZED_KERNEL_ENABLE   = 'O',
-  IDX_OUTFILE_AUTOHEX_DISABLE   = 0xff28,
-  IDX_OUTFILE_CHECK_DIR         = 0xff29,
-  IDX_OUTFILE_CHECK_TIMER       = 0xff2a,
-  IDX_OUTFILE_FORMAT            = 0xff2b,
+  IDX_OUTFILE_AUTOHEX_DISABLE   = 0xff2b,
+  IDX_OUTFILE_CHECK_DIR         = 0xff2c,
+  IDX_OUTFILE_CHECK_TIMER       = 0xff2d,
+  IDX_OUTFILE_FORMAT            = 0xff2e,
   IDX_OUTFILE                   = 'o',
-  IDX_POTFILE_DISABLE           = 0xff2c,
-  IDX_POTFILE_PATH              = 0xff2d,
-  IDX_PROGRESS_ONLY             = 0xff2e,
-  IDX_QUIET                     = 0xff2f,
-  IDX_REMOVE                    = 0xff30,
-  IDX_REMOVE_TIMER              = 0xff31,
-  IDX_RESTORE                   = 0xff32,
-  IDX_RESTORE_DISABLE           = 0xff33,
-  IDX_RESTORE_FILE_PATH         = 0xff34,
+  IDX_POTFILE_DISABLE           = 0xff2f,
+  IDX_POTFILE_PATH              = 0xff30,
+  IDX_PROGRESS_ONLY             = 0xff31,
+  IDX_QUIET                     = 0xff32,
+  IDX_REMOVE                    = 0xff33,
+  IDX_REMOVE_TIMER              = 0xff34,
+  IDX_RESTORE                   = 0xff35,
+  IDX_RESTORE_DISABLE           = 0xff36,
+  IDX_RESTORE_FILE_PATH         = 0xff37,
   IDX_RP_FILE                   = 'r',
-  IDX_RP_GEN_FUNC_MAX           = 0xff35,
-  IDX_RP_GEN_FUNC_MIN           = 0xff36,
+  IDX_RP_GEN_FUNC_MAX           = 0xff38,
+  IDX_RP_GEN_FUNC_MIN           = 0xff39,
   IDX_RP_GEN                    = 'g',
-  IDX_RP_GEN_SEED               = 0xff37,
+  IDX_RP_GEN_SEED               = 0xff3a,
   IDX_RULE_BUF_L                = 'j',
   IDX_RULE_BUF_R                = 'k',
-  IDX_RUNTIME                   = 0xff38,
-  IDX_SCRYPT_TMTO               = 0xff39,
+  IDX_RUNTIME                   = 0xff3b,
+  IDX_SCRYPT_TMTO               = 0xff3c,
   IDX_SEGMENT_SIZE              = 'c',
-  IDX_SELF_TEST_DISABLE         = 0xff3a,
+  IDX_SELF_TEST_DISABLE         = 0xff3d,
   IDX_SEPARATOR                 = 'p',
-  IDX_SESSION                   = 0xff3b,
-  IDX_SHOW                      = 0xff3c,
+  IDX_SESSION                   = 0xff3e,
+  IDX_SHOW                      = 0xff3f,
   IDX_SKIP                      = 's',
   IDX_SLOW_CANDIDATES           = 'S',
-  IDX_SPEED_ONLY                = 0xff3d,
-  IDX_SPIN_DAMP                 = 0xff3e,
-  IDX_STATUS                    = 0xff3f,
-  IDX_STATUS_JSON               = 0xff40,
-  IDX_STATUS_TIMER              = 0xff41,
-  IDX_STDOUT_FLAG               = 0xff42,
-  IDX_STDIN_TIMEOUT_ABORT       = 0xff43,
-  IDX_TRUECRYPT_KEYFILES        = 0xff44,
-  IDX_USERNAME                  = 0xff45,
-  IDX_VERACRYPT_KEYFILES        = 0xff46,
-  IDX_VERACRYPT_PIM_START       = 0xff47,
-  IDX_VERACRYPT_PIM_STOP        = 0xff48,
+  IDX_SPEED_ONLY                = 0xff40,
+  IDX_SPIN_DAMP                 = 0xff41,
+  IDX_STATUS                    = 0xff42,
+  IDX_STATUS_JSON               = 0xff43,
+  IDX_STATUS_TIMER              = 0xff44,
+  IDX_STDOUT_FLAG               = 0xff45,
+  IDX_STDIN_TIMEOUT_ABORT       = 0xff46,
+  IDX_TRUECRYPT_KEYFILES        = 0xff47,
+  IDX_USERNAME                  = 0xff48,
+  IDX_VERACRYPT_KEYFILES        = 0xff49,
+  IDX_VERACRYPT_PIM_START       = 0xff4a,
+  IDX_VERACRYPT_PIM_STOP        = 0xff4b,
   IDX_VERSION_LOWER             = 'v',
   IDX_VERSION                   = 'V',
-  IDX_WORDLIST_AUTOHEX_DISABLE  = 0xff49,
+  IDX_WORDLIST_AUTOHEX_DISABLE  = 0xff4c,
   IDX_WORKLOAD_PROFILE          = 'w',
 
 } user_options_map_t;
 
 typedef enum token_attr
 {
-  TOKEN_ATTR_FIXED_LENGTH       = 1 << 0,
-  TOKEN_ATTR_OPTIONAL_ROUNDS    = 1 << 1,
-  TOKEN_ATTR_VERIFY_SIGNATURE   = 1 << 2,
-  TOKEN_ATTR_VERIFY_LENGTH      = 1 << 3,
-  TOKEN_ATTR_VERIFY_DIGIT       = 1 << 4,
-  TOKEN_ATTR_VERIFY_FLOAT       = 1 << 5,
-  TOKEN_ATTR_VERIFY_HEX         = 1 << 6,
-  TOKEN_ATTR_VERIFY_BASE64A     = 1 << 7,
-  TOKEN_ATTR_VERIFY_BASE64B     = 1 << 8,
-  TOKEN_ATTR_VERIFY_BASE64C     = 1 << 9
+  TOKEN_ATTR_FIXED_LENGTH       = 1 <<  0,
+  TOKEN_ATTR_SEPARATOR_FARTHEST = 1 <<  1,
+  TOKEN_ATTR_OPTIONAL_ROUNDS    = 1 <<  2,
+  TOKEN_ATTR_VERIFY_SIGNATURE   = 1 <<  3,
+  TOKEN_ATTR_VERIFY_LENGTH      = 1 <<  4,
+  TOKEN_ATTR_VERIFY_DIGIT       = 1 <<  5,
+  TOKEN_ATTR_VERIFY_FLOAT       = 1 <<  6,
+  TOKEN_ATTR_VERIFY_HEX         = 1 <<  7,
+  TOKEN_ATTR_VERIFY_BASE64A     = 1 <<  8,
+  TOKEN_ATTR_VERIFY_BASE64B     = 1 <<  9,
+  TOKEN_ATTR_VERIFY_BASE64C     = 1 << 10,
 
 } token_attr_t;
 
@@ -1064,6 +1078,7 @@ typedef struct hc_device_param
   u32     kernel_wgs1;
   u32     kernel_wgs12;
   u32     kernel_wgs2;
+  u32     kernel_wgs2e;
   u32     kernel_wgs23;
   u32     kernel_wgs3;
   u32     kernel_wgs4;
@@ -1085,6 +1100,7 @@ typedef struct hc_device_param
   u32     kernel_preferred_wgs_multiple1;
   u32     kernel_preferred_wgs_multiple12;
   u32     kernel_preferred_wgs_multiple2;
+  u32     kernel_preferred_wgs_multiple2e;
   u32     kernel_preferred_wgs_multiple23;
   u32     kernel_preferred_wgs_multiple3;
   u32     kernel_preferred_wgs_multiple4;
@@ -1106,6 +1122,7 @@ typedef struct hc_device_param
   u64     kernel_local_mem_size1;
   u64     kernel_local_mem_size12;
   u64     kernel_local_mem_size2;
+  u64     kernel_local_mem_size2e;
   u64     kernel_local_mem_size23;
   u64     kernel_local_mem_size3;
   u64     kernel_local_mem_size4;
@@ -1123,6 +1140,28 @@ typedef struct hc_device_param
   u64     kernel_local_mem_size_aux2;
   u64     kernel_local_mem_size_aux3;
   u64     kernel_local_mem_size_aux4;
+
+  u64     kernel_dynamic_local_mem_size1;
+  u64     kernel_dynamic_local_mem_size12;
+  u64     kernel_dynamic_local_mem_size2;
+  u64     kernel_dynamic_local_mem_size2e;
+  u64     kernel_dynamic_local_mem_size23;
+  u64     kernel_dynamic_local_mem_size3;
+  u64     kernel_dynamic_local_mem_size4;
+  u64     kernel_dynamic_local_mem_size_init2;
+  u64     kernel_dynamic_local_mem_size_loop2;
+  u64     kernel_dynamic_local_mem_size_mp;
+  u64     kernel_dynamic_local_mem_size_mp_l;
+  u64     kernel_dynamic_local_mem_size_mp_r;
+  u64     kernel_dynamic_local_mem_size_amp;
+  u64     kernel_dynamic_local_mem_size_tm;
+  u64     kernel_dynamic_local_mem_size_memset;
+  u64     kernel_dynamic_local_mem_size_atinit;
+  u64     kernel_dynamic_local_mem_size_decompress;
+  u64     kernel_dynamic_local_mem_size_aux1;
+  u64     kernel_dynamic_local_mem_size_aux2;
+  u64     kernel_dynamic_local_mem_size_aux3;
+  u64     kernel_dynamic_local_mem_size_aux4;
 
   u32     kernel_accel;
   u32     kernel_accel_prev;
@@ -1218,6 +1257,7 @@ typedef struct hc_device_param
 
   double  exec_us_prev1[EXPECTED_ITERATIONS];
   double  exec_us_prev2[EXPECTED_ITERATIONS];
+  double  exec_us_prev2e[EXPECTED_ITERATIONS];
   double  exec_us_prev3[EXPECTED_ITERATIONS];
   double  exec_us_prev4[EXPECTED_ITERATIONS];
   double  exec_us_prev_init2[EXPECTED_ITERATIONS];
@@ -1236,12 +1276,29 @@ typedef struct hc_device_param
 
   hc_timer_t timer_speed;
 
+  // Some more attributes
+
+  bool    use_opencl12;
+  bool    use_opencl20;
+
   // AMD
+  bool    has_vadd;
+  bool    has_vaddc;
+  bool    has_vadd_co;
+  bool    has_vaddc_co;
+  bool    has_vsub;
+  bool    has_vsubb;
+  bool    has_vsub_co;
+  bool    has_vsubb_co;
   bool    has_vadd3;
   bool    has_vbfe;
   bool    has_vperm;
 
   // NV
+  bool    has_add;
+  bool    has_addc;
+  bool    has_sub;
+  bool    has_subc;
   bool    has_bfe;
   bool    has_lop3;
   bool    has_mov64;
@@ -1297,12 +1354,14 @@ typedef struct hc_device_param
   CUevent           cuda_event2;
 
   CUmodule          cuda_module;
+  CUmodule          cuda_module_shared;
   CUmodule          cuda_module_mp;
   CUmodule          cuda_module_amp;
 
   CUfunction        cuda_function1;
   CUfunction        cuda_function12;
   CUfunction        cuda_function2;
+  CUfunction        cuda_function2e;
   CUfunction        cuda_function23;
   CUfunction        cuda_function3;
   CUfunction        cuda_function4;
@@ -1378,12 +1437,14 @@ typedef struct hc_device_param
   cl_command_queue  opencl_command_queue;
 
   cl_program        opencl_program;
+  cl_program        opencl_program_shared;
   cl_program        opencl_program_mp;
   cl_program        opencl_program_amp;
 
   cl_kernel         opencl_kernel1;
   cl_kernel         opencl_kernel12;
   cl_kernel         opencl_kernel2;
+  cl_kernel         opencl_kernel2e;
   cl_kernel         opencl_kernel23;
   cl_kernel         opencl_kernel3;
   cl_kernel         opencl_kernel4;
@@ -1824,6 +1885,7 @@ typedef struct user_options
   bool         brain_host_chgd;
   bool         brain_port_chgd;
   bool         brain_password_chgd;
+  bool         brain_server_timer_chgd;
   #endif
   bool         hash_mode_chgd;
   bool         hccapx_message_pair_chgd;
@@ -1866,6 +1928,8 @@ typedef struct user_options
   bool         machine_readable;
   bool         markov_classic;
   bool         markov_disable;
+  bool         backend_ignore_cuda;
+  bool         backend_ignore_opencl;
   bool         backend_info;
   bool         optimized_kernel_enable;
   bool         outfile_autohex;
@@ -1885,6 +1949,8 @@ typedef struct user_options
   bool         stdin_timeout_abort_chgd;
   bool         usage;
   bool         username;
+  bool         veracrypt_pim_start_chgd;
+  bool         veracrypt_pim_stop_chgd;
   bool         version;
   bool         wordlist_autohex_disable;
   #ifdef WITH_BRAIN
@@ -1920,6 +1986,7 @@ typedef struct user_options
   u32          bitmap_max;
   u32          bitmap_min;
   #ifdef WITH_BRAIN
+  u32          brain_server_timer;
   u32          brain_client_features;
   u32          brain_port;
   u32          brain_session;

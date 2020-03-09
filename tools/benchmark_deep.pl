@@ -8,7 +8,7 @@ my $amd_cache        = "~/.AMD";
 my $hashcat_path     = ".";
 my $kernels_cache    = "$hashcat_path/kernels";
 my $hashcat_bin      = "$hashcat_path/hashcat";
-my $device           = 1;
+my $device           = 3;
 my $workload_profile = 3;
 my $runtime          = 24;
 my $sleep_sec        = 12;
@@ -35,7 +35,7 @@ else
   system ("nvidia-smi -rac");
   system ("nvidia-smi -pm ENABLED");
   system ("nvidia-smi -acp UNRESTRICTED");
-  system ("nvidia-smi -pl 1"); ## needs per-gpu adjust
+  system ("nvidia-smi -pl 225"); ## needs per-gpu adjust
   system ("nvidia-settings -a GPUPowerMizerMode=1 -a GPUFanControlState=1 -a GPUTargetFanSpeed=100");
 }
 
@@ -280,6 +280,25 @@ my @hash_types =
   20013,
   20500,
   20510,
+  20600,
+  20710,
+  20800,
+  20900,
+  21000,
+  21100,
+  21200,
+  21300,
+  21400,
+  21500,
+  21600,
+  21700,
+  21800,
+  22000,
+  22100,
+  22200,
+  22300,
+  22400,
+  22500,
 );
 
 if (scalar @ARGV)
@@ -433,7 +452,14 @@ sub get_module
 
     if ($line =~ /OPTS_TYPE_BINARY_HASHFILE/)
     {
-      $is_binary = 1;
+      if (($hash_type == 22000) || ($hash_type == 22001))
+      {
+        ## problem while in -m 2500 backward compatiblity mode
+      }
+      else
+      {
+        $is_binary = 1;
+      }
     }
 
     if ($line =~ /ST_HASH *= \"(.*)\"/)
