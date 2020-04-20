@@ -43,6 +43,10 @@ static bool is_same_device (const hc_device_param_t *src, const hc_device_param_
   if (src->pcie_device   != dst->pcie_device)   return false;
   if (src->pcie_function != dst->pcie_function) return false;
 
+  // Intel CPU and embedded GPU would survive up to here!
+
+  if (src->opencl_device_type != dst->opencl_device_type) return false;
+
   return true;
 }
 
@@ -369,31 +373,24 @@ static bool opencl_test_instruction (hashcat_ctx_t *hashcat_ctx, cl_context cont
 
   OCL_PTR *ocl = (OCL_PTR *) backend_ctx->ocl;
 
-  // LLVM seems to write an error message (if there's an error) directly to stderr
-  // and not (as supposted to) into buffer for later request using clGetProgramBuildInfo()
 
   #ifndef DEBUG
-  #ifndef _WIN
-  fflush (stderr);
-  int bak = fcntl(2, F_DUPFD_CLOEXEC);
-  int tmp = open ("/dev/null", O_WRONLY | O_CLOEXEC);
-  dup2 (tmp, 2);
+  const int fd_stderr = fileno (stderr);
+  const int stderr_bak = dup (fd_stderr);
+  #ifdef _WIN
+  const int tmp = open ("NUL", O_WRONLY);
+  #else
+  const int tmp = open ("/dev/null", O_WRONLY);
+  #endif
+  dup2 (tmp, fd_stderr);
   close (tmp);
   #endif
-  #endif
 
-  int CL_rc = ocl->clBuildProgram (program, 1, &device, "-Werror", NULL, NULL); // do not use the wrapper to avoid the error message
+  const int CL_rc = ocl->clBuildProgram (program, 1, &device, NULL, NULL, NULL);
 
   #ifndef DEBUG
-  #ifndef _WIN
-  fflush (stderr);
-  #ifndef __APPLE__
-  dup3 (bak, 2, O_CLOEXEC);
-  #else
-  dup2 (bak, 2);
-  #endif
-  close (bak);
-  #endif
+  dup2 (stderr_bak, fd_stderr);
+  close (stderr_bak);
   #endif
 
   if (CL_rc != CL_SUCCESS)
@@ -3668,14 +3665,14 @@ int run_kernel (hashcat_ctx_t *hashcat_ctx, hc_device_param_t *device_param, con
 
     const u32 iterationm = iteration % EXPECTED_ITERATIONS;
 
-    cl_int opencl_event_status;
-
-    size_t param_value_size_ret;
-
-    if (hc_clGetEventInfo (hashcat_ctx, opencl_event, CL_EVENT_COMMAND_EXECUTION_STATUS, sizeof (opencl_event_status), &opencl_event_status, &param_value_size_ret) == -1) return -1;
-
     if (device_param->spin_damp > 0)
     {
+      cl_int opencl_event_status;
+
+      size_t param_value_size_ret;
+
+      if (hc_clGetEventInfo (hashcat_ctx, opencl_event, CL_EVENT_COMMAND_EXECUTION_STATUS, sizeof (opencl_event_status), &opencl_event_status, &param_value_size_ret) == -1) return -1;
+
       double spin_total = device_param->spin_damp;
 
       while (opencl_event_status != CL_COMPLETE)
@@ -4979,25 +4976,17 @@ int backend_ctx_init (hashcat_ctx_t *hashcat_ctx)
 
       #if defined (__linux__)
       event_log_warning (hashcat_ctx, "* AMD GPUs on Linux require this driver:");
-      event_log_warning (hashcat_ctx, "  \"RadeonOpenCompute (ROCm)\" Software Platform (1.6.180 or later)");
+      event_log_warning (hashcat_ctx, "  \"RadeonOpenCompute (ROCm)\" Software Platform (3.1 or later)");
       #elif defined (_WIN)
       event_log_warning (hashcat_ctx, "* AMD GPUs on Windows require this driver:");
-      event_log_warning (hashcat_ctx, "  \"AMD Radeon Software Crimson Edition\" (15.12 or later)");
+      event_log_warning (hashcat_ctx, "  \"AMD Radeon Adrenalin 2020 Edition\" (20.2.2 or later)");
       #endif
 
       event_log_warning (hashcat_ctx, "* Intel CPUs require this runtime:");
       event_log_warning (hashcat_ctx, "  \"OpenCL Runtime for Intel Core and Intel Xeon Processors\" (16.1.1 or later)");
 
-      #if defined (__linux__)
-      event_log_warning (hashcat_ctx, "* Intel GPUs on Linux require this driver:");
-      event_log_warning (hashcat_ctx, "  \"OpenCL 2.0 GPU Driver Package for Linux\" (2.0 or later)");
-      #elif defined (_WIN)
-      event_log_warning (hashcat_ctx, "* Intel GPUs on Windows require this driver:");
-      event_log_warning (hashcat_ctx, "  \"OpenCL Driver for Intel Iris and Intel HD Graphics\"");
-      #endif
-
       event_log_warning (hashcat_ctx, "* NVIDIA GPUs require this runtime and/or driver (both):");
-      event_log_warning (hashcat_ctx, "  \"NVIDIA Driver\" (418.56 or later)");
+      event_log_warning (hashcat_ctx, "  \"NVIDIA Driver\" (440.64 or later)");
       event_log_warning (hashcat_ctx, "  \"CUDA Toolkit\" (9.0 or later)");
       event_log_warning (hashcat_ctx, NULL);
 
@@ -5261,25 +5250,17 @@ int backend_ctx_init (hashcat_ctx_t *hashcat_ctx)
 
     #if defined (__linux__)
     event_log_warning (hashcat_ctx, "* AMD GPUs on Linux require this driver:");
-    event_log_warning (hashcat_ctx, "  \"RadeonOpenCompute (ROCm)\" Software Platform (1.6.180 or later)");
+    event_log_warning (hashcat_ctx, "  \"RadeonOpenCompute (ROCm)\" Software Platform (3.1 or later)");
     #elif defined (_WIN)
     event_log_warning (hashcat_ctx, "* AMD GPUs on Windows require this driver:");
-    event_log_warning (hashcat_ctx, "  \"AMD Radeon Software Crimson Edition\" (15.12 or later)");
+    event_log_warning (hashcat_ctx, "  \"AMD Radeon Adrenalin 2020 Edition\" (20.2.2 or later)");
     #endif
 
     event_log_warning (hashcat_ctx, "* Intel CPUs require this runtime:");
     event_log_warning (hashcat_ctx, "  \"OpenCL Runtime for Intel Core and Intel Xeon Processors\" (16.1.1 or later)");
 
-    #if defined (__linux__)
-    event_log_warning (hashcat_ctx, "* Intel GPUs on Linux require this driver:");
-    event_log_warning (hashcat_ctx, "  \"OpenCL 2.0 GPU Driver Package for Linux\" (2.0 or later)");
-    #elif defined (_WIN)
-    event_log_warning (hashcat_ctx, "* Intel GPUs on Windows require this driver:");
-    event_log_warning (hashcat_ctx, "  \"OpenCL Driver for Intel Iris and Intel HD Graphics\"");
-    #endif
-
     event_log_warning (hashcat_ctx, "* NVIDIA GPUs require this runtime and/or driver (both):");
-    event_log_warning (hashcat_ctx, "  \"NVIDIA Driver\" (418.56 or later)");
+    event_log_warning (hashcat_ctx, "  \"NVIDIA Driver\" (440.64 or later)");
     event_log_warning (hashcat_ctx, "  \"CUDA Toolkit\" (9.0 or later)");
     event_log_warning (hashcat_ctx, NULL);
 
@@ -5371,6 +5352,7 @@ int backend_ctx_devices_init (hashcat_ctx_t *hashcat_ctx, const int comptime)
 
       device_param->use_opencl12 = false;
       device_param->use_opencl20 = false;
+      device_param->use_opencl21 = false;
 
       // device_name
 
@@ -5655,12 +5637,14 @@ int backend_ctx_devices_init (hashcat_ctx_t *hashcat_ctx, const int comptime)
     cl_device_id  **opencl_platforms_devices     = backend_ctx->opencl_platforms_devices;
     cl_uint        *opencl_platforms_devices_cnt = backend_ctx->opencl_platforms_devices_cnt;
     cl_uint        *opencl_platforms_vendor_id   = backend_ctx->opencl_platforms_vendor_id;
+    char          **opencl_platforms_version     = backend_ctx->opencl_platforms_version;
 
     for (u32 opencl_platforms_idx = 0; opencl_platforms_idx < opencl_platforms_cnt; opencl_platforms_idx++)
     {
       cl_device_id   *opencl_platform_devices     = opencl_platforms_devices[opencl_platforms_idx];
       cl_uint         opencl_platform_devices_cnt = opencl_platforms_devices_cnt[opencl_platforms_idx];
       cl_uint         opencl_platform_vendor_id   = opencl_platforms_vendor_id[opencl_platforms_idx];
+      char           *opencl_platform_version     = opencl_platforms_version[opencl_platforms_idx];
 
       for (u32 opencl_platform_devices_idx = 0; opencl_platform_devices_idx < opencl_platform_devices_cnt; opencl_platform_devices_idx++, backend_devices_idx++, opencl_devices_cnt++)
       {
@@ -5684,8 +5668,30 @@ int backend_ctx_devices_init (hashcat_ctx_t *hashcat_ctx, const int comptime)
 
         device_param->is_opencl = true;
 
+        // check OpenCL version
+
         device_param->use_opencl12 = false;
         device_param->use_opencl20 = false;
+        device_param->use_opencl21 = false;
+
+        int opencl_version_min = 0;
+        int opencl_version_maj = 0;
+
+        if (sscanf (opencl_platform_version, "OpenCL %d.%d", &opencl_version_min, &opencl_version_maj) == 2)
+        {
+          if ((opencl_version_min == 1) && (opencl_version_maj == 2))
+          {
+            device_param->use_opencl12 = true;
+          }
+          else if ((opencl_version_min == 2) && (opencl_version_maj == 0))
+          {
+            device_param->use_opencl20 = true;
+          }
+          else if ((opencl_version_min == 2) && (opencl_version_maj == 1))
+          {
+            device_param->use_opencl21 = true;
+          }
+        }
 
         size_t param_value_size = 0;
 
@@ -5799,23 +5805,6 @@ int backend_ctx_devices_init (hashcat_ctx_t *hashcat_ctx, const int comptime)
         if (hc_clGetDeviceInfo (hashcat_ctx, device_param->opencl_device, CL_DEVICE_OPENCL_C_VERSION, param_value_size, opencl_device_c_version, NULL) == -1) return -1;
 
         device_param->opencl_device_c_version = opencl_device_c_version;
-
-        // check OpenCL version
-
-        int opencl_version_min = 0;
-        int opencl_version_maj = 0;
-
-        if (sscanf (opencl_device_c_version, "OpenCL C %d.%d", &opencl_version_min, &opencl_version_maj) == 2)
-        {
-          if ((opencl_version_min == 1) && (opencl_version_maj == 2))
-          {
-            device_param->use_opencl12 = true;
-          }
-          else if ((opencl_version_min == 2) && (opencl_version_maj == 0))
-          {
-            device_param->use_opencl20 = true;
-          }
-        }
 
         // max_compute_units
 
@@ -5997,11 +5986,44 @@ int backend_ctx_devices_init (hashcat_ctx_t *hashcat_ctx, const int comptime)
             {
               if (user_options->quiet == false) event_log_warning (hashcat_ctx, "* Device #%u: Not a native Intel OpenCL runtime. Expect massive speed loss.", device_id + 1);
               if (user_options->quiet == false) event_log_warning (hashcat_ctx, "             You can use --force to override, but do not report related errors.");
+              if (user_options->quiet == false) event_log_warning (hashcat_ctx, NULL);
 
               device_param->skipped = true;
             }
           }
         }
+
+        char *opencl_device_version_lower = hcstrdup (opencl_device_version);
+
+        lowercase ((u8 *) opencl_device_version_lower, strlen (opencl_device_version_lower));
+
+        if ((strstr (opencl_device_version_lower, "neo "))
+         || (strstr (opencl_device_version_lower, " neo"))
+         || (strstr (opencl_device_version_lower, "beignet "))
+         || (strstr (opencl_device_version_lower, " beignet"))
+         || (strstr (opencl_device_version_lower, "pocl "))
+         || (strstr (opencl_device_version_lower, " pocl"))
+         || (strstr (opencl_device_version_lower, "mesa "))
+         || (strstr (opencl_device_version_lower, " mesa")))
+        {
+          // NEO:     https://github.com/hashcat/hashcat/issues/2342
+          // BEIGNET: https://github.com/hashcat/hashcat/issues/2243
+          // POCL:    https://github.com/hashcat/hashcat/issues/2344
+          // MESA:    https://github.com/hashcat/hashcat/issues/2269
+
+          if (user_options->force == false)
+          {
+            event_log_error (hashcat_ctx, "* Device #%u: Unstable OpenCL driver detected!", device_id + 1);
+
+            if (user_options->quiet == false) event_log_warning (hashcat_ctx, "This OpenCL driver has been marked as likely to fail kernel compilation or to produce false negatives.");
+            if (user_options->quiet == false) event_log_warning (hashcat_ctx, "You can use --force to override this, but do not report related errors.");
+            if (user_options->quiet == false) event_log_warning (hashcat_ctx, NULL);
+
+            device_param->skipped = true;
+          }
+        }
+
+        hcfree (opencl_device_version_lower);
 
         // Since some times we get reports from users about not working hashcat, dropping error messages like:
         // CL_INVALID_COMMAND_QUEUE and CL_OUT_OF_RESOURCES
@@ -6240,23 +6262,18 @@ int backend_ctx_devices_init (hashcat_ctx_t *hashcat_ctx, const int comptime)
 
                 if (r == 2)
                 {
-                  if (version_maj >= 367)
+                  if (version_maj >= 440)
                   {
-                    if (version_maj == 418)
-                    {
-                      // older 418.x versions are known to be broken.
-                      // for instance, NVIDIA-Linux-x86_64-418.43.run
-                      // run ./hashcat -b -m 2501 results in self-test fail
-
-                      if (version_min >= 56)
-                      {
-                        nv_warn = false;
-                      }
-                    }
-                    else
+                    if (version_min >= 64)
                     {
                       nv_warn = false;
                     }
+                  }
+                  else
+                  {
+                    // unknown version scheme, probably new driver version
+
+                    nv_warn = false;
                   }
                 }
                 else
@@ -7747,8 +7764,9 @@ int backend_session_begin (hashcat_ctx_t *hashcat_ctx)
     build_options_len += snprintf (build_options_buf + build_options_len, build_options_sz - build_options_len, "-D KERNEL_STATIC -I OpenCL -I %s ", folder_config->cpath_real);
     #endif
 
-    // workarounds reproduceable bugs on some OpenCL runtimes (Beignet and NEO)
-    // ex: remove empty code in m04, m08 and m16 in OpenCL/m05600_a3-optimized.cl will break s04 kernel (not cracking anymore)
+    /* currently disabled, hangs NEO drivers since 20.09.
+       was required for NEO driver 20.08 to workaround the same issue!
+       we go with the latest version
 
     if (device_param->is_opencl == true)
     {
@@ -7760,7 +7778,12 @@ int backend_session_begin (hashcat_ctx_t *hashcat_ctx)
       {
         build_options_len += snprintf (build_options_buf + build_options_len, build_options_sz - build_options_len, "-cl-std=CL2.0 ");
       }
+      else if (device_param->use_opencl21 == true)
+      {
+        build_options_len += snprintf (build_options_buf + build_options_len, build_options_sz - build_options_len, "-cl-std=CL2.1 ");
+      }
     }
+    */
 
     // we don't have sm_* on vendors not NV but it doesn't matter
 
